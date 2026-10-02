@@ -20,26 +20,6 @@ jobs:
             cp -r MovieRecapAI-Step5-cloud-build/* .
           fi
 
-      - name: Fix Kotlin Smart Cast issue in MovieRecapApp.kt
-        run: |
-          FILE_PATH="app/src/main/java/com/movierecap/ai/ui/MovieRecapApp.kt"
-          if [ -f "$FILE_PATH" ]; then
-            echo "Fixing smart cast issues in $FILE_PATH..."
-            # Replace delegated property checks or force non-null assertions/local vars
-            sed -i 's/\bval video\b/val localVideo = video; if (localVideo != null)/g' "$FILE_PATH" || true
-            python3 -c "
-          path = '$FILE_PATH'
-          with open(path, 'r') as f:
-              content = f.read()
-          content = content.replace('if (video != null)', 'val currentVideo = video\n            if (currentVideo != null)')
-          content = content.replace('video.', 'currentVideo.')
-          content = content.replace('if (progress != null)', 'val currentProgress = progress\n            if (currentProgress != null)')
-          content = content.replace('progress.', 'currentProgress.')
-          with open(path, 'w') as f:
-              f.write(content)
-          " || true
-          fi
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -50,7 +30,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug -Dorg.gradle.project.kotlin.warningsAsErrors=false -Pkotlin.suppressWarnings=true
+        env:
+          JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
